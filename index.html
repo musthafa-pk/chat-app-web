@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App with Google Sign-In</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script type="module">
+        // Import necessary functions from Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        // Your Firebase configuration (replace with your own Firebase project config)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRI-UjUxctGk2LGRqy2KN7fNVKO09RmuY",
+            authDomain: "weatherapp-a2adf.firebaseapp.com",
+            projectId: "weatherapp-a2adf",
+            storageBucket: "weatherapp-a2adf.appspot.com",
+            messagingSenderId: "153557977763",
+            appId: "1:153557977763:web:4ca20290d9c46ea0a90d16"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const provider = new GoogleAuthProvider();
+
+        // DOM Elements
+        const loginDiv = document.getElementById('login');
+        const chatDiv = document.getElementById('chat');
+        const googleSignInButton = document.getElementById('googleSignIn');
+        const signOutButton = document.getElementById('signOut');
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageButton = document.getElementById('sendMessage');
+        const messagesDiv = document.getElementById('messages');
+
+        // Google Sign-In
+        googleSignInButton.addEventListener('click', () => {
+            signInWithPopup(auth, provider)
+                .then(result => {
+                    console.log('User signed in:', result.user.displayName);
+                    showChatUI();
+                })
+                .catch(error => {
+                    console.error('Error during sign-in:', error);
+                });
+        });
+
+        // Sign Out
+        signOutButton.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                console.log('User signed out');
+                showLoginUI();
+            }).catch(error => {
+                console.error('Error signing out:', error);
+            });
+        });
+
+        // Send message
+        sendMessageButton.addEventListener('click', async () => {
+            const message = messageInput.value;
+            if (message) {
+                await addDoc(collection(db, 'messages'), {
+                    text: message,
+                    createdAt: new Date(),
+                    user: auth.currentUser.displayName
+                });
+                messageInput.value = ''; // Clear input field
+            }
+        });
+
+        // Show real-time chat
+        // Show real-time chat
+onSnapshot(query(collection(db, 'messages'), orderBy('createdAt')), snapshot => {
+    messagesDiv.innerHTML = ''; // Clear previous messages
+    snapshot.forEach(doc => {
+        const message = doc.data();
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'p-2', 'mb-1', 'rounded');
+        // Add classes based on user
+        if (message.user === auth.currentUser.displayName) {
+            messageDiv.classList.add('bg-primary', 'text-white');
+        } else {
+            messageDiv.classList.add('bg-light', 'text-dark');
+        }
+        messageDiv.textContent = `${message.user}: ${message.text}`;
+        messagesDiv.appendChild(messageDiv);
+    });
+});
+
+        // Helper functions to toggle between login and chat UI
+        const showChatUI = () => {
+            loginDiv.style.display = 'none';
+            chatDiv.style.display = 'block';
+        };
+
+        const showLoginUI = () => {
+            loginDiv.style.display = 'block';
+            chatDiv.style.display = 'none';
+        };
+
+        // On Auth State Change
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                console.log('User is signed in:', user.displayName);
+                showChatUI();
+            } else {
+                console.log('No user is signed in');
+                showLoginUI();
+            }
+        });
+    </script>
+    <style>
+        body {
+            background-color: #e5ddd5;
+        }
+        #login {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #25d366;
+        }
+        #chat {
+            display: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+        .message {
+            max-width: 70%;
+            margin-left: auto;
+            margin-right: auto;
+            position: relative;
+            clear: both;
+        }
+        #messageInput {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            margin: 10px;
+        }
+        #sendMessage, #signOut {
+            border-radius: 20px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="login">
+        <button id="googleSignIn" class="btn btn-lg btn-success">Sign in with Google</button>
+    </div>
+
+    <div id="chat">
+        <div class="container-fluid">
+            <h3 class="text-center mt-3">Chat Room</h3>
+            <div id="messages" class="border rounded mb-3"></div>
+            <div class="input-group mb-3">
+                <input type="text" id="messageInput" class="form-control" placeholder="Type your message">
+                <div class="input-group-append">
+                    <button id="sendMessage" class="btn btn-primary">Send</button>
+                    <button id="signOut" class="btn btn-danger">Sign Out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
